@@ -2,6 +2,7 @@ import edu.princeton.cs.algs4.In;
 import edu.princeton.cs.algs4.Stack;
 import edu.princeton.cs.algs4.StdOut;
 
+import java.util.Arrays;
 import java.util.HashMap;
 
 /* *****************************************************************************
@@ -12,6 +13,7 @@ import java.util.HashMap;
 public class BaseballElimination {
     private final int numOfTeams;
     private final int[][] standings;
+    private final int[][] gamesBetween;
     private final HashMap<String, Integer> team2id;
 
     // create a baseball division from given filename in format specified below
@@ -21,8 +23,9 @@ public class BaseballElimination {
 
         // Initialize Structures
         numOfTeams = baseballIn.readInt();
-        standings = new int[numOfTeams][4
-                + numOfTeams];  // Width has columns team, w, l, r + between
+        standings = new int[numOfTeams][4];  // Width has columns team, w, l, r
+        gamesBetween = new int[numOfTeams][numOfTeams];
+
 
         team2id = new HashMap<String, Integer>();
 
@@ -41,7 +44,7 @@ public class BaseballElimination {
 
             // Games remaining between division teams
             for (int i = 0; i < numOfTeams; i++) {
-                standings[row][4 + i] = baseballIn.readInt();
+                gamesBetween[row][i] = baseballIn.readInt();
             }
             row++;
         }
@@ -79,14 +82,21 @@ public class BaseballElimination {
     // number of remaining games between team1 and team2
     public int against(String team1, String team2) {
 
-        int row = team2id.get(team1);
-        int col = team2id.get(team2);
+        int i = team2id.get(team1);
+        int j = team2id.get(team2);
 
-        return standings[row][4 + col];
+        return gamesBetween[i][j];
     }
 
     // is given team eliminated?
     public boolean isEliminated(String team) {
+
+        // Build FlowNetwork
+
+        // Run FordFulkerson to see maxFlow
+
+        // for FordFulkerson.value() < numofTeams return true (team is eliminated)
+
         return true; // Placeholder
     }
 
@@ -107,17 +117,8 @@ public class BaseballElimination {
 
         }
 
-        StdOut.println("Games remaining between Atlanta + NY " +
-                               baseball.against("Atlanta", "New_York"));
+        StdOut.println(Arrays.deepToString(baseball.gamesBetween));
 
-        StdOut.println("Games remaining between Philly + Atlanta " +
-                               baseball.against("Philadelphia", "Atlanta"));
-
-        StdOut.println("Games remaining between NY + Philly " +
-                               baseball.against("New_York", "Philadelphia"));
-
-        StdOut.println("Games remaining between Montreal + Philly " +
-                               baseball.against("Montreal", "Philadelphia"));
-
+        StdOut.println(baseball.against("New_York", "Atlanta"));
     }
 }
