@@ -1,3 +1,5 @@
+import edu.princeton.cs.algs4.FlowEdge;
+import edu.princeton.cs.algs4.FlowNetwork;
 import edu.princeton.cs.algs4.In;
 import edu.princeton.cs.algs4.Stack;
 import edu.princeton.cs.algs4.StdOut;
@@ -12,6 +14,7 @@ import java.util.HashMap;
  **************************************************************************** */
 public class BaseballElimination {
     private final int numOfTeams;
+    private final int numOfGamePairs;
     private final int[][] standings;
     private final int[][] gamesBetween;
     private final HashMap<String, Integer> team2id;
@@ -23,9 +26,9 @@ public class BaseballElimination {
 
         // Initialize Structures
         numOfTeams = baseballIn.readInt();
+        numOfGamePairs = getGamesBetween(numOfTeams - 1); // Account for team being examined
         standings = new int[numOfTeams][4];  // Width has columns team, w, l, r
         gamesBetween = new int[numOfTeams][numOfTeams];
-
 
         team2id = new HashMap<String, Integer>();
 
@@ -91,13 +94,87 @@ public class BaseballElimination {
     // is given team eliminated?
     public boolean isEliminated(String team) {
 
-        // Build FlowNetwork
+        // Calculate # of vertices for Flow Network
+        int v = 2 + numOfGamePairs + numOfTeams; // s + games + teams + t
 
+
+        // Build FlowNetwork
+        FlowNetwork baseballNetwork = new FlowNetwork(v);
+        populateFlowNetwork(baseballNetwork, team);
+
+
+        StdOut.println(baseballNetwork.toString());
         // Run FordFulkerson to see maxFlow
 
-        // for FordFulkerson.value() < numofTeams return true (team is eliminated)
+        // for FordFulkerson.value() < totalGames return true (team is eliminated)
 
         return true; // Placeholder
+    }
+
+    // Returns total combinations of 2 games between n teams
+    private int getGamesBetween(int n) {
+        return factorial(n) / (2 * factorial(n - 2));
+    }
+
+    private int factorial(int n) {
+        if (n == 1) return 1;
+        return n * factorial(n - 1);
+    }
+
+    private void populateFlowNetwork(FlowNetwork baseballNetwork, String team) {
+
+        int teamID = team2id.get(team);
+
+        int s = 0;
+        int t = baseballNetwork.V() - 1;
+        boolean[][] marked = new boolean[numOfTeams][numOfTeams];
+
+        // Make edges from s to all gamesBetween, gamesBetween to teams
+        int currentW = 1;
+        for (int i = 0; i < numOfTeams; i++) {
+            for (int j = 0; j < numOfTeams; j++) {
+
+                if (!visited(i, j, marked) && i != j
+                        && (i != teamID && j != teamID)) {
+
+                    marked[i][j] = true;
+                    marked[j][i] = true;
+
+                    FlowEdge etoGame = new FlowEdge(s, currentW, gamesBetween[i][j]);
+                    FlowEdge etoI = new FlowEdge(currentW, numOfGamePairs + i,
+                                                 Double.POSITIVE_INFINITY);
+                    FlowEdge etoJ = new FlowEdge(currentW, numOfGamePairs + j,
+                                                 Double.POSITIVE_INFINITY);
+
+                    baseballNetwork.addEdge(etoGame);
+                    baseballNetwork.addEdge(etoI);
+                    baseballNetwork.addEdge(etoJ);
+
+                    currentW++;
+                }
+            }
+        }
+
+        // Populate edges between teams and t
+        int currentTeam = 0;
+        for (int i = numOfGamePairs; i < (numOfGamePairs + numOfTeams - 1); i++) {
+
+            int capacity = wins(team) + remaining(team) - standings[currentTeam][1];
+/*            StdOut.println("Team " + currentTeam);
+            StdOut.printf("Capacity = %d wins + %d remaining - (%d wins of team %d) = %d \n",
+                          wins(team), remaining(team),
+                          standings[currentTeam][1], currentTeam, capacity);*/
+            FlowEdge edgeToT = new FlowEdge(i, t, Math.max(0.0, capacity));
+
+            baseballNetwork.addEdge(edgeToT);
+
+            currentTeam++;
+        }
+
+    }
+
+    private boolean visited(int i, int j, boolean[][] marked) {
+        return marked[i][j] && marked[j][i];
     }
 
     // subset R of teams that eliminates given team; null if not eliminated
@@ -119,6 +196,7 @@ public class BaseballElimination {
 
         StdOut.println(Arrays.deepToString(baseball.gamesBetween));
 
-        StdOut.println(baseball.against("New_York", "Atlanta"));
+        baseball.isEliminated("Montreal");
+
     }
 }
