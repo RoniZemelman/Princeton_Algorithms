@@ -95,7 +95,8 @@ public class BaseballElimination {
     public boolean isEliminated(String team) {
 
         // Calculate # of vertices for Flow Network
-        int v = 2 + numOfGamePairs + numOfTeams; // s + games + teams + t
+        int numRemaining = numOfTeams - 1;
+        int v = 2 + numOfGamePairs + numRemaining; // s + games + teams + t
 
 
         // Build FlowNetwork
@@ -141,9 +142,9 @@ public class BaseballElimination {
                     marked[j][i] = true;
 
                     FlowEdge etoGame = new FlowEdge(s, currentW, gamesBetween[i][j]);
-                    FlowEdge etoI = new FlowEdge(currentW, numOfGamePairs + i,
+                    FlowEdge etoI = new FlowEdge(currentW, 1 + numOfGamePairs + i,
                                                  Double.POSITIVE_INFINITY);
-                    FlowEdge etoJ = new FlowEdge(currentW, numOfGamePairs + j,
+                    FlowEdge etoJ = new FlowEdge(currentW, 1 + numOfGamePairs + j,
                                                  Double.POSITIVE_INFINITY);
 
                     baseballNetwork.addEdge(etoGame);
@@ -157,7 +158,7 @@ public class BaseballElimination {
 
         // Populate edges between teams and t
         int currentTeam = 0;
-        for (int i = numOfGamePairs; i < (numOfGamePairs + numOfTeams - 1); i++) {
+        for (int i = numOfGamePairs + 1; i < t; i++) {
 
             int capacity = wins(team) + remaining(team) - standings[currentTeam][1];
 /*            StdOut.println("Team " + currentTeam);
@@ -196,7 +197,8 @@ public class BaseballElimination {
 
         StdOut.println(Arrays.deepToString(baseball.gamesBetween));
 
-        baseball.isEliminated("Montreal");
+        // baseball.isEliminated("Detroit"); // for teams5.txt
+        baseball.isEliminated("Montreal"); // for teams4.txt
 
     }
 }
