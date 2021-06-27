@@ -1,10 +1,10 @@
 import edu.princeton.cs.algs4.FlowEdge;
 import edu.princeton.cs.algs4.FlowNetwork;
+import edu.princeton.cs.algs4.FordFulkerson;
 import edu.princeton.cs.algs4.In;
 import edu.princeton.cs.algs4.Stack;
 import edu.princeton.cs.algs4.StdOut;
 
-import java.util.Arrays;
 import java.util.HashMap;
 
 /* *****************************************************************************
@@ -94,22 +94,36 @@ public class BaseballElimination {
     // is given team eliminated?
     public boolean isEliminated(String team) {
 
+        if (team == null || team2id.get(team) == null) throw new IllegalArgumentException();
+
+        // Trivial elimination
+        if (wins(team) + remaining(team) < standings[0][1]) return true;
+
+
         // Calculate # of vertices for Flow Network
         int numRemaining = numOfTeams - 1;
         int v = 2 + numOfGamePairs + numRemaining; // s + games + teams + t
-
 
         // Build FlowNetwork
         FlowNetwork baseballNetwork = new FlowNetwork(v);
         populateFlowNetwork(baseballNetwork, team);
 
+        // StdOut.println("***FlowNetwork***\n" + baseballNetwork.toString());
 
-        StdOut.println(baseballNetwork.toString());
         // Run FordFulkerson to see maxFlow
+        int s = 0;
+        int t = baseballNetwork.V() - 1;
+        FordFulkerson maxflow = new FordFulkerson(baseballNetwork, s, t);
 
-        // for FordFulkerson.value() < totalGames return true (team is eliminated)
+        // Check if all edges from S are full
+        for (FlowEdge e : baseballNetwork.edges()) {
+            if (e.from() == s && e.to() <= numOfGamePairs) {
+                int w = e.to();
+                if (e.residualCapacityTo(w) > 0.0) return true;
+            }
+        }
 
-        return true; // Placeholder
+        return false;
     }
 
     // Returns total combinations of 2 games between n teams
@@ -161,10 +175,7 @@ public class BaseballElimination {
         for (int i = numOfGamePairs + 1; i < t; i++) {
 
             int capacity = wins(team) + remaining(team) - standings[currentTeam][1];
-/*            StdOut.println("Team " + currentTeam);
-            StdOut.printf("Capacity = %d wins + %d remaining - (%d wins of team %d) = %d \n",
-                          wins(team), remaining(team),
-                          standings[currentTeam][1], currentTeam, capacity);*/
+
             FlowEdge edgeToT = new FlowEdge(i, t, Math.max(0.0, capacity));
 
             baseballNetwork.addEdge(edgeToT);
@@ -195,10 +206,11 @@ public class BaseballElimination {
 
         }
 
-        StdOut.println(Arrays.deepToString(baseball.gamesBetween));
-
         // baseball.isEliminated("Detroit"); // for teams5.txt
-        baseball.isEliminated("Montreal"); // for teams4.txt
+
+        boolean eliminated = baseball.isEliminated("Montreal"); // for teams4.txt
+
+        StdOut.println(eliminated);
 
     }
 }
