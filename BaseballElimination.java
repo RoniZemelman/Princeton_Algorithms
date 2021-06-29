@@ -2,6 +2,7 @@ import edu.princeton.cs.algs4.FlowEdge;
 import edu.princeton.cs.algs4.FlowNetwork;
 import edu.princeton.cs.algs4.FordFulkerson;
 import edu.princeton.cs.algs4.In;
+import edu.princeton.cs.algs4.StdOut;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,6 +31,7 @@ public class BaseballElimination {
         // Initialize Structures
         numOfTeams = baseballIn.readInt();
         numOfGamePairs = countCombosRemaining(numOfTeams); // Account for team being examined
+        // StdOut.println("Number of remaining games: " + numOfGamePairs);
         standings = new int[numOfTeams][4];  // Width has columns team, w, l, r
         gamesBetween = new int[numOfTeams][numOfTeams];
 
@@ -110,11 +112,10 @@ public class BaseballElimination {
         // Trivial elimination
         if (wins(team) + remaining(team) < standings[0][1]) return true;
 
-
         // Build FlowNetwork
-        populateFlowNetwork(baseballNetwork, team);
+        populateFlowNetwork(team);
 
-        // StdOut.println("***FlowNetwork***\n" + baseballNetwork.toString());
+        StdOut.println("***FlowNetwork***\n" + baseballNetwork.toString());
 
         // Run FordFulkerson to see maxFlow
         int s = 0;
@@ -155,12 +156,10 @@ public class BaseballElimination {
                 }
             }
         }
-
         return counter;
     }
 
-    private void populateFlowNetwork(FlowNetwork baseballNetwork, String team) {
-
+    private void populateFlowNetwork(String team) {
         int teamID = team2id.get(team);
 
         int s = 0;
@@ -178,34 +177,40 @@ public class BaseballElimination {
                     marked[i][j] = true;
                     marked[j][i] = true;
 
-                    FlowEdge etoGame = new FlowEdge(s, currentW, gamesBetween[i][j]);
-                    FlowEdge etoI = new FlowEdge(currentW, 1 + numOfGamePairs + i,
-                                                 Double.POSITIVE_INFINITY);
-                    FlowEdge etoJ = new FlowEdge(currentW, 1 + numOfGamePairs + j,
-                                                 Double.POSITIVE_INFINITY);
+                    int newI = Math.max(0, i - 1);
+                    int newJ = Math.max(0, j - 1);
 
-                    baseballNetwork.addEdge(etoGame);
-                    baseballNetwork.addEdge(etoI);
-                    baseballNetwork.addEdge(etoJ);
+                    StdOut.printf("Games Found at %d, %d.  New ij: %d,%d\n", i, j, newI,
+                                  newJ);
+
+                    // From source -> games -> teams
+                    FlowEdge sToGame = new FlowEdge(s, currentW, gamesBetween[i][j]);
+                    FlowEdge gameToI = new FlowEdge(currentW, 1 + numOfGamePairs + newI,
+                                                    Double.POSITIVE_INFINITY);
+                    FlowEdge gameToJ = new FlowEdge(currentW, 1 + numOfGamePairs + newJ,
+                                                    Double.POSITIVE_INFINITY);
+
+                    baseballNetwork.addEdge(sToGame);
+                    baseballNetwork.addEdge(gameToI);
+                    baseballNetwork.addEdge(gameToJ);
 
                     currentW++;
                 }
             }
         }
+        // From teams -> t
+        for (int i = 0; i < numOfTeams; i++) {
 
-        // Populate edges between teams and t
-        int currentTeam = 0;
-        for (int i = numOfGamePairs + 1; i < t; i++) {
+            if (i == teamID) continue;
 
-            int capacity = wins(team) + remaining(team) - standings[currentTeam][1];
+            int capacity = wins(team) + remaining(team) - standings[i][1];
+            int newI = Math.max(0, i - 1);
 
-            FlowEdge edgeToT = new FlowEdge(i, t, Math.max(0.0, capacity));
+            FlowEdge teamToSink = new FlowEdge(1 + numOfGamePairs + newI, t, capacity);
 
-            baseballNetwork.addEdge(edgeToT);
+            baseballNetwork.addEdge(teamToSink);
 
-            currentTeam++;
         }
-
     }
 
     private boolean visited(int i, int j, boolean[][] marked) {
@@ -231,6 +236,10 @@ public class BaseballElimination {
 
         }*/
 
+        String team = "Philadelphia";
+        boolean eliminated = baseball.isEliminated(team);
+        StdOut.println(team + " i = " + baseball.team2id.get(team));
+        StdOut.println(eliminated);
 
         // boolean eliminated = baseball.isEliminated("Detroit"); // for teams5.txt
 
