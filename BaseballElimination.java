@@ -118,7 +118,7 @@ public class BaseballElimination {
         // Build Flow network
         populateFlowNetwork(team);
 
-        StdOut.println("***FlowNetwork***\n" + baseballNetwork.toString());
+        // StdOut.println("***FlowNetwork***\n" + baseballNetwork.toString());
 
         // Run FordFulkerson to see maxFlow
         int s = 0;
@@ -130,7 +130,6 @@ public class BaseballElimination {
             if (e.from() == s && e.to() <= numOfGamePairs) {
                 int w = e.to();
                 if (e.residualCapacityTo(w) > 0.0) {
-                    eliminated = true;
                     return true;
                 }
             }
@@ -173,7 +172,6 @@ public class BaseballElimination {
                 k++;
             }
         }
-        // StdOut.println("Hashmap ijToV : " + ijToV.toString());
 
         int s = 0;
         int t = baseballNetwork.V() - 1;
@@ -207,8 +205,6 @@ public class BaseballElimination {
                     baseballNetwork.addEdge(gameToI);
                     baseballNetwork.addEdge(gameToJ);
 
-                    // StdOut.println(gameToI.toString() + "\n" + gameToJ.toString());
-
                     currentW++;
                 }
             }
@@ -233,7 +229,36 @@ public class BaseballElimination {
     // subset R of teams that eliminates given team; null if not eliminated
     public Iterable<String> certificateOfElimination(String team) {
 
+        // Reinitialize Flow Network
+        int numRemaining = numOfTeams - 1;
+        int v = 2 + numOfGamePairs + numRemaining; // s + games + teams + t
+        baseballNetwork = new FlowNetwork(v);
+
+        if (!isEliminated(team)) return null;
+
+        // Check if all edges from S are full
         ArrayList<String> teamsAhead = new ArrayList<>();
+
+        HashMap<Integer, Integer> vToIJ = new HashMap<Integer, Integer>();
+        // Build converted i,j in hashmap
+        for (int teamNum = 0, k = 0; teamNum < numOfTeams; teamNum++) {
+            if (teamNum != team2id.get(team)) {
+                vToIJ.put(k, teamNum);
+                k++;
+            }
+        }
+
+        for (FlowEdge e : baseballNetwork.edges()) {
+
+            if (e.from() == 0 && e.to() <= numOfGamePairs) {
+                int w = e.to();
+                if (e.residualCapacityTo(w) > 0.0) {
+
+                    int originalI = vToIJ.get(w);
+                    teamsAhead.add(id2team.get(originalI));
+                }
+            }
+        }
         return teamsAhead;
     }
 
@@ -253,6 +278,9 @@ public class BaseballElimination {
         boolean eliminated = baseball.isEliminated(team);
         StdOut.println(team + " i = " + baseball.team2id.get(team));
         StdOut.println(eliminated);
+
+        StdOut.println(baseball.certificateOfElimination(args[1]));
+
 
         // boolean eliminated = baseball.isEliminated("Detroit"); // for teams5.txt
 
