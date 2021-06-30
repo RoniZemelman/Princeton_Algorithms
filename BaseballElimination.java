@@ -58,13 +58,6 @@ public class BaseballElimination {
             }
             row++;
         }
-
-        // Build Flow Network
-        int numRemaining = numOfTeams - 1;
-        int v = 2 + numOfGamePairs + numRemaining; // s + games + teams + t
-        baseballNetwork = new FlowNetwork(v);
-
-        eliminated = false;
     }
 
     // number of teams
@@ -79,24 +72,37 @@ public class BaseballElimination {
 
     // number of wins for given team
     public int wins(String team) {
+
+        if (team2id.get(team) == null) throw new IllegalArgumentException();
+
         int row = team2id.get(team);
+
         return standings[row][1];
     }
 
     // number of losses for given team
     public int losses(String team) {
+
+        if (team2id.get(team) == null) throw new IllegalArgumentException();
+
         int row = team2id.get(team);
         return standings[row][2];
     }
 
     // number of remaining games for given team
     public int remaining(String team) {
+
+        if (team2id.get(team) == null) throw new IllegalArgumentException();
+
         int row = team2id.get(team);
         return standings[row][3];
     }
 
     // number of remaining games between team1 and team2
     public int against(String team1, String team2) {
+
+        if (team2id.get(team1) == null || team2id.get(team2) == null)
+            throw new IllegalArgumentException();
 
         int i = team2id.get(team1);
         int j = team2id.get(team2);
@@ -111,11 +117,16 @@ public class BaseballElimination {
 
         // Trivial elimination
         if (wins(team) + remaining(team) < standings[0][1]) {
-            StdOut.println("Trivial elimination");
             return true;
         }
 
         // Build Flow network
+
+        // Build Flow Network
+        int numRemaining = numOfTeams - 1;
+        int v = 2 + numOfGamePairs + numRemaining; // s + games + teams + t
+        baseballNetwork = new FlowNetwork(v);
+
         populateFlowNetwork(team);
 
         // StdOut.println("***FlowNetwork***\n" + baseballNetwork.toString());
@@ -191,9 +202,6 @@ public class BaseballElimination {
                     int newI = ijToV.get(i);
                     int newJ = ijToV.get(j);
 
-                    StdOut.printf("Games Found at %d, %d.  New ij: %d,%d\n", i, j, newI,
-                                  newJ);
-
                     // From source -> games -> teams
                     FlowEdge sToGame = new FlowEdge(s, currentW, gamesBetween[i][j]);
                     FlowEdge gameToI = new FlowEdge(currentW, 1 + numOfGamePairs + newI,
@@ -217,7 +225,7 @@ public class BaseballElimination {
             int capacity = wins(team) + remaining(team) - standings[i][1];
             int newI = ijToV.get(i);
 
-            FlowEdge teamToSink = new FlowEdge(1 + numOfGamePairs + newI, t, capacity);
+            FlowEdge teamToSink = new FlowEdge(1 + numOfGamePairs + newI, t, Math.max(0, capacity));
             baseballNetwork.addEdge(teamToSink);
         }
     }
@@ -229,6 +237,15 @@ public class BaseballElimination {
     // subset R of teams that eliminates given team; null if not eliminated
     public Iterable<String> certificateOfElimination(String team) {
 
+        // Check if all edges from S are full
+        ArrayList<String> teamsAhead = new ArrayList<>();
+
+        // trivial elimination
+        if (wins(team) + remaining(team) < standings[0][1]) {
+            teamsAhead.add(id2team.get(0));
+            return teamsAhead;
+        }
+
         // Reinitialize Flow Network
         int numRemaining = numOfTeams - 1;
         int v = 2 + numOfGamePairs + numRemaining; // s + games + teams + t
@@ -236,59 +253,42 @@ public class BaseballElimination {
 
         if (!isEliminated(team)) return null;
 
-        // Check if all edges from S are full
-        ArrayList<String> teamsAhead = new ArrayList<>();
 
-        HashMap<Integer, Integer> vToIJ = new HashMap<Integer, Integer>();
-        // Build converted i,j in hashmap
+        HashMap<Integer, Integer> iToV = new HashMap<Integer, Integer>();
+
+        // Build converted vertice point to i,j in hashmap
         for (int teamNum = 0, k = 0; teamNum < numOfTeams; teamNum++) {
             if (teamNum != team2id.get(team)) {
-                vToIJ.put(k, teamNum);
+                iToV.put(teamNum, k);
                 k++;
             }
         }
 
-        for (FlowEdge e : baseballNetwork.edges()) {
+        // Add all team vertices in the cut to certificate
+        for (int i = 0; i < numOfTeams; i++) {
 
-            if (e.from() == 0 && e.to() <= numOfGamePairs) {
-                int w = e.to();
-                if (e.residualCapacityTo(w) > 0.0) {
+            if (i == team2id.get(team)) continue;
 
-                    int originalI = vToIJ.get(w);
-                    teamsAhead.add(id2team.get(originalI));
-                }
-            }
+            int t = 1 + numOfGamePairs + iToV.get(i);
+            if (maxflow.inCut(t)) teamsAhead.add(id2team.get(i));
         }
+
         return teamsAhead;
     }
 
     public static void main(String[] args) {
-
-        BaseballElimination baseball = new BaseballElimination(args[0]);
-
-/*        for (String team : baseball.teams()) {
-
-            StdOut.print(team + " ");
-            StdOut.println(baseball.wins(team) + " " + baseball.losses(team)
-                                   + " " + baseball.remaining(team));
-
-        }*/
-
-        String team = args[1];
-        boolean eliminated = baseball.isEliminated(team);
-        StdOut.println(team + " i = " + baseball.team2id.get(team));
-        StdOut.println(eliminated);
-
-        StdOut.println(baseball.certificateOfElimination(args[1]));
-
-
-        // boolean eliminated = baseball.isEliminated("Detroit"); // for teams5.txt
-
-        // StdOut.println(eliminated);
-
-        // boolean eliminated = baseball.isEliminated("Montreal"); // for teams4.txt
-
-        // StdOut.println(eliminated);
-
+        BaseballElimination division = new BaseballElimination(args[0]);
+        for (String team : division.teams()) {
+            if (division.isEliminated(team)) {
+                StdOut.print(team + " is eliminated by the subset R = { ");
+                for (String t : division.certificateOfElimination(team)) {
+                    StdOut.print(t + " ");
+                }
+                StdOut.println("}");
+            }
+            else {
+                StdOut.println(team + " is not eliminated");
+            }
+        }
     }
 }
