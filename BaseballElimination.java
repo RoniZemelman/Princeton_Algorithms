@@ -110,9 +110,12 @@ public class BaseballElimination {
         if (team == null || team2id.get(team) == null) throw new IllegalArgumentException();
 
         // Trivial elimination
-        if (wins(team) + remaining(team) < standings[0][1]) return true;
+        if (wins(team) + remaining(team) < standings[0][1]) {
+            StdOut.println("Trivial elimination");
+            return true;
+        }
 
-        // Build FlowNetwork
+        // Build Flow network
         populateFlowNetwork(team);
 
         StdOut.println("***FlowNetwork***\n" + baseballNetwork.toString());
@@ -161,6 +164,16 @@ public class BaseballElimination {
 
     private void populateFlowNetwork(String team) {
         int teamID = team2id.get(team);
+        HashMap<Integer, Integer> ijToV = new HashMap<Integer, Integer>();
+
+        // Build converted i,j in hashmap
+        for (int teamNum = 0, k = 0; teamNum < numOfTeams; teamNum++) {
+            if (teamNum != teamID) {
+                ijToV.put(teamNum, k);
+                k++;
+            }
+        }
+        // StdOut.println("Hashmap ijToV : " + ijToV.toString());
 
         int s = 0;
         int t = baseballNetwork.V() - 1;
@@ -177,8 +190,8 @@ public class BaseballElimination {
                     marked[i][j] = true;
                     marked[j][i] = true;
 
-                    int newI = Math.max(0, i - 1);
-                    int newJ = Math.max(0, j - 1);
+                    int newI = ijToV.get(i);
+                    int newJ = ijToV.get(j);
 
                     StdOut.printf("Games Found at %d, %d.  New ij: %d,%d\n", i, j, newI,
                                   newJ);
@@ -194,6 +207,8 @@ public class BaseballElimination {
                     baseballNetwork.addEdge(gameToI);
                     baseballNetwork.addEdge(gameToJ);
 
+                    // StdOut.println(gameToI.toString() + "\n" + gameToJ.toString());
+
                     currentW++;
                 }
             }
@@ -204,12 +219,10 @@ public class BaseballElimination {
             if (i == teamID) continue;
 
             int capacity = wins(team) + remaining(team) - standings[i][1];
-            int newI = Math.max(0, i - 1);
+            int newI = ijToV.get(i);
 
             FlowEdge teamToSink = new FlowEdge(1 + numOfGamePairs + newI, t, capacity);
-
             baseballNetwork.addEdge(teamToSink);
-
         }
     }
 
@@ -236,7 +249,7 @@ public class BaseballElimination {
 
         }*/
 
-        String team = "Philadelphia";
+        String team = args[1];
         boolean eliminated = baseball.isEliminated(team);
         StdOut.println(team + " i = " + baseball.team2id.get(team));
         StdOut.println(eliminated);
