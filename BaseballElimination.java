@@ -20,8 +20,8 @@ public class BaseballElimination {
     private final HashMap<String, Integer> team2id;
     private final HashMap<Integer, String> id2team;
     private FlowNetwork baseballNetwork;
-    private boolean eliminated;
     private FordFulkerson maxflow;
+    private final int leader;
 
     // create a baseball division from given filename in format specified below
     public BaseballElimination(String filename) {
@@ -38,6 +38,9 @@ public class BaseballElimination {
         team2id = new HashMap<String, Integer>();
         id2team = new HashMap<Integer, String>();
 
+        int mostWins = -1;
+        int winning = -1;
+
         int row = 0;
         while (!baseballIn.isEmpty()) {
 
@@ -48,6 +51,11 @@ public class BaseballElimination {
 
             standings[row][0] = row; // i
             standings[row][1] = baseballIn.readInt(); // wins
+            if (mostWins < standings[row][1]) {
+                mostWins = standings[row][1];
+                winning = row;
+            }
+
             standings[row][2] = baseballIn.readInt(); // losses
             standings[row][3] = baseballIn.readInt(); // remaining
 
@@ -58,6 +66,7 @@ public class BaseballElimination {
             }
             row++;
         }
+        leader = winning;
     }
 
     // number of teams
@@ -116,20 +125,16 @@ public class BaseballElimination {
         if (team == null || team2id.get(team) == null) throw new IllegalArgumentException();
 
         // Trivial elimination
-        if (wins(team) + remaining(team) < standings[0][1]) {
+        if (wins(team) + remaining(team) < standings[leader][1]) {
             return true;
         }
 
-        // Build Flow network
-
         // Build Flow Network
         int numRemaining = numOfTeams - 1;
-        int v = 2 + numOfGamePairs + numRemaining; // s + games + teams + t
+        int v = 2 + numOfGamePairs + numRemaining;
         baseballNetwork = new FlowNetwork(v);
 
         populateFlowNetwork(team);
-
-        // StdOut.println("***FlowNetwork***\n" + baseballNetwork.toString());
 
         // Run FordFulkerson to see maxFlow
         int s = 0;
@@ -241,8 +246,8 @@ public class BaseballElimination {
         ArrayList<String> teamsAhead = new ArrayList<>();
 
         // trivial elimination
-        if (wins(team) + remaining(team) < standings[0][1]) {
-            teamsAhead.add(id2team.get(0));
+        if (wins(team) + remaining(team) < standings[leader][1]) {
+            teamsAhead.add(id2team.get(leader));
             return teamsAhead;
         }
 
